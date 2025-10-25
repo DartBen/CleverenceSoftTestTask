@@ -19,7 +19,7 @@ namespace FirstTask
             // если использовать простой string может быть много алокаций на длинных строках
             StringBuilder output = new StringBuilder();
 
-            //оптимальным будет использовать Span для проходу по строке - для уменьшения алокаций.
+            //оптимальным будет использовать Span для прохода по строке - для уменьшения алокаций.
             var inputSpan = input.AsSpan();
 
             Console.WriteLine($"Длина строки {inputSpan.Length}");
@@ -79,7 +79,7 @@ namespace FirstTask
             // если использовать простой string может быть много алокаций на длинных строках
             StringBuilder output = new StringBuilder();
 
-            //оптимальным будет использовать Span для проходу по строке - для уменьшения алокаций
+            //оптимальным будет использовать Span для прохода по строке - для уменьшения алокаций
             var inputSpan = input.AsSpan();
 
             Console.WriteLine($"Длина строки {inputSpan.Length}");
