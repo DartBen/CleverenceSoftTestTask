@@ -1,5 +1,4 @@
-﻿using System.Runtime.CompilerServices;
-using System.Text.RegularExpressions;
+﻿using System.Text.RegularExpressions;
 using ThirdTask.Service;
 
 namespace ThirdTask
@@ -19,6 +18,19 @@ namespace ThirdTask
         static List<IPatternLogChecker> parsers = new List<IPatternLogChecker>();
 
         static void Main(string[] args)
+        {
+            var services = builder.Services;
+
+            services.AddSingleton<Regex>(sp => Format1Regex); // Регистрация regex как singleton
+            services.AddSingleton<Regex>(sp => Format2Regex); // или как иначе удобно
+
+            // Регистрация парсеров, созданных через фабрику
+            services.AddTransient<IPatternLogChecker>(sp => sp.GetRequiredService<ILogParserFactory>().CreateParser(Format1Regex));
+            services.AddTransient<IPatternLogChecker>(sp => sp.GetRequiredService<ILogParserFactory>().CreateParser(Format2Regex));
+
+        }
+
+        static void Main_old(string[] args)
         {
             string inputFile = "input.log";
             string outputFile = "output.log";
@@ -52,12 +64,6 @@ namespace ThirdTask
             }
 
             Console.WriteLine("Обработка логов завершена. Результаты в output.log, проблемы в problems.txt");
-
-
-            Console.ReadKey();
-            GC.Collect();
-            Console.ReadKey();
-
         }
 
         private static LogMetadata ParseLogLine(string logLine)

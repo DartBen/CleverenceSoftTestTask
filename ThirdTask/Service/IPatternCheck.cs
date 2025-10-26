@@ -1,15 +1,9 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Text.RegularExpressions;
-using System.Threading.Tasks;
+﻿using System.Text.RegularExpressions;
 
 namespace ThirdTask.Service
 {
-    interface IPatternLogChecker
+    public interface IPatternLogChecker
     {
-        void SetInputPattern(Regex pattern);
         LogMetadata TryCheckString(string log);
     }
 }

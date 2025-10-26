@@ -1,12 +1,8 @@
-﻿using System.Reflection.Emit;
-using static System.Runtime.InteropServices.JavaScript.JSType;
-
-namespace ThirdTask.Service
+﻿namespace ThirdTask.Service
 {
     public record LogMetadata
     {
         public bool IsSuccess { get; }
-        public LogType LogType { get; }
         public DateOnly Date { get; }
         public string Time { get; }
         public LogLevel LogLevel { get; }

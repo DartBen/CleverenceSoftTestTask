@@ -1,7 +1,6 @@
 ﻿using System.Text.RegularExpressions;
-using ThirdTask.Service;
 
-namespace ThirdTask
+namespace ThirdTask.Service
 {
     public class LogParser : IPatternLogChecker
     {
@@ -28,11 +27,6 @@ namespace ThirdTask
             return true;
         }
 
-        public void SetInputPattern(Regex pattern)
-        {
-            _regex = pattern;
-        }
-
         public LogMetadata TryCheckString(string log)
         {
             var match = _regex.Match(log);
@@ -49,20 +43,6 @@ namespace ThirdTask
 
             // если ошибка парсинга
             return LogMetadata.BadResult(match.Success, "");
-        }
-
-        private static LogLevel NormalizeLevel(string inputLevel)
-        {
-            return inputLevel switch
-            {
-                "INFORMATION" => LogLevel.INFO,
-                "WARNING" => LogLevel.WARN,
-                "ERROR" => LogLevel.ERROR,
-                "DEBUG" => LogLevel.DEBUG,
-                "INFO" => LogLevel.INFO,
-                "WARN" => LogLevel.WARN,
-                _ => LogLevel.Undefined
-            };
         }
     }
 }
