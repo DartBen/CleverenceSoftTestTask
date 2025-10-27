@@ -9,13 +9,16 @@ namespace ThirdTask.Service
         private readonly ILogParserFactory _parserFactory;
 
         private static readonly Regex Format1Regex =
-            new Regex(@"^(?<date>\d{2}\.\d{2}\.\d{4})\s+(?<time>\d{2}:\d{2}:\d{2}\.\d{3})\s+(?<loglevel>INFORMATION|WARNING|ERROR|DEBUG)(?<invoker>)\s+(?<message>.*)$",
-    RegexOptions.Compiled);
-
-        private static readonly Regex Format2Regex = new Regex(@"^(?<date>\d{4}-\d{2}-\d{2})\s+(?<time>\d{2}:\d{2}:\d{2}\.\d{4})\|\s+(?<loglevel>INFO|WARN|ERROR|DEBUG)\|(\d+)\|(?<invoker>[^|]*)\|\s+(?<message>.*)$",
+            new Regex(
+                @"^(?<date>\d{2}\.\d{2}\.\d{4})\s+(?<time>\d{2}:\d{2}:\d{2}\.\d{3})\s+(?<loglevel>INFORMATION|WARNING|ERROR|DEBUG)(?<invoker>)\s+(?<message>.*)$",
             RegexOptions.Compiled);
 
-        LogProcessor(ILogParserFactory parserFactory, ILogger<LogProcessor> logger)
+        private static readonly Regex Format2Regex =
+            new Regex(
+                @"^(?<date>\d{4}-\d{2}-\d{2})\s+(?<time>\d{2}:\d{2}:\d{2}\.\d{4})\|\s+(?<loglevel>INFO|WARN|ERROR|DEBUG)\|(\d+)\|(?<invoker>[^|]*)\|\s+(?<message>.*)$",
+            RegexOptions.Compiled);
+
+        public LogProcessor(ILogParserFactory parserFactory, ILogger<LogProcessor> logger)
         {
             _logger = logger;
             _parserFactory = parserFactory;
@@ -40,10 +43,19 @@ namespace ThirdTask.Service
             {
                 lineNumber++;
                 LogMetadata metadata = null;
+
                 foreach (var parser in parsers)
                 {
-                    metadata = parser.TryCheckString(line);
-                    if (metadata?.IsSuccess == true) break;
+                    try
+                    {
+                        metadata = parser.TryCheckString(line);
+                        if (metadata?.IsSuccess == true)
+                            break;
+                    }
+                    catch 
+                    {
+                        _logger.LogWarning("Исключение при обработке лога на строке {LineNumber}: {Line}", lineNumber, line);
+                    }
                 }
 
                 if (metadata != null && metadata.IsSuccess)

@@ -1,92 +1,74 @@
-﻿using System.Text.RegularExpressions;
+﻿using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
+using System.CommandLine;
 using ThirdTask.Service;
 
 namespace ThirdTask
 {
     internal class Program
     {
-
-        // Регулярные выражения для каждого формата
-        private static readonly Regex Format1Regex = new Regex(
-            @"^(?<date>\d{2}\.\d{2}\.\d{4})\s+(?<time>\d{2}:\d{2}:\d{2}\.\d{3})\s+(?<loglevel>INFORMATION|WARNING|ERROR|DEBUG)(?<invoker>)\s+(?<message>.*)$",
-            RegexOptions.Compiled);
-
-        private static readonly Regex Format2Regex = new Regex(
-            @"^(?<date>\d{4}-\d{2}-\d{2})\s+(?<time>\d{2}:\d{2}:\d{2}\.\d{4})\|\s+(?<loglevel>INFO|WARN|ERROR|DEBUG)\|(\d+)\|(?<invoker>[^|]*)\|\s+(?<message>.*)$",
-            RegexOptions.Compiled);
-
-        static List<IPatternLogChecker> parsers = new List<IPatternLogChecker>();
-
-        static void Main(string[] args)
+        static async Task<int> Main(string[] args)
         {
-            var services = builder.Services;
+            var rootCommand = new RootCommand("Консольная программа для стандартизации лог-файлов");
 
-            services.AddSingleton<Regex>(sp => Format1Regex); // Регистрация regex как singleton
-            services.AddSingleton<Regex>(sp => Format2Regex); // или как иначе удобно
-
-            // Регистрация парсеров, созданных через фабрику
-            services.AddTransient<IPatternLogChecker>(sp => sp.GetRequiredService<ILogParserFactory>().CreateParser(Format1Regex));
-            services.AddTransient<IPatternLogChecker>(sp => sp.GetRequiredService<ILogParserFactory>().CreateParser(Format2Regex));
-
-        }
-
-        static void Main_old(string[] args)
-        {
-            string inputFile = "input.log";
-            string outputFile = "output.log";
-            string problemFile = "problems.txt";
-
-            var formatParser = new LogParser(Format1Regex);
-
-            parsers.Add(formatParser);
-            parsers.Add(new LogParser(Format2Regex));
-
-            using var reader = new StreamReader(inputFile);
-            using var writer = new StreamWriter(outputFile, append: false);
-            using var problemWriter = new StreamWriter(problemFile, append: false);
-
-            string line;
-            int lineNumber = 0;
-            while ((line = reader.ReadLine()) != null)
+            Option<FileInfo> inputOption = new("--input", "-i")
             {
-                lineNumber++;
-                var result = ParseLogLine(line);
+                Description = "Путь к входному лог-файлу",
+                DefaultValueFactory = _ => new FileInfo("input.log")
+            };
 
-                if (result.IsSuccess)
-                {
-                    writer.WriteLine($"{result.Date} {result.Time} {result.LogLevel} {result.InvokerMethod} {result.Message}");
-                }
-                else
-                {
-                    // Записываем исходную строку в файл проблем
-                    problemWriter.WriteLine(line);
-                }
-            }
-
-            Console.WriteLine("Обработка логов завершена. Результаты в output.log, проблемы в problems.txt");
-        }
-
-        private static LogMetadata ParseLogLine(string logLine)
-        {
-            LogMetadata badResult;
-            try
+            Option<FileInfo> outputOption = new("--output", "-o")
             {
-                foreach (LogParser parser in parsers)
-                {
+                Description = "Путь к выходному файлу",
+                DefaultValueFactory = _ => new FileInfo("output.log")
+            };
 
-                    var parseResult = parser.TryCheckString(logLine);
+            Option<FileInfo> problemOption = new("--problems", "-p")
+            {
+                Description = "Путь к файлу с невалидными строками",
+                DefaultValueFactory = _ => new FileInfo("problems.txt")
+            };
 
-                    if (parseResult.IsSuccess)
+            rootCommand.Options.Add(inputOption);
+            rootCommand.Options.Add(outputOption);
+            rootCommand.Options.Add(problemOption);
+
+            rootCommand.SetAction(async (ParseResult parseResult, CancellationToken cancellationToken) =>
+            {
+                var input = parseResult.GetValue(inputOption);
+                var output = parseResult.GetValue(outputOption);
+                var problems = parseResult.GetValue(problemOption);
+
+                // Создаём Host внутри действия
+                var hostBuilder = Host.CreateDefaultBuilder(Array.Empty<string>()) // args уже обработаны CLI
+                    .ConfigureLogging(logging =>
                     {
-                        return parseResult;
-                    }
-                }
-            }
-            catch (Exception e)
-            {
-                return (LogMetadata.BadResult(false, logLine));
-            }
-            return (LogMetadata.BadResult(false, logLine));
+                        logging.AddFilter("Microsoft.Hosting.Lifetime", Microsoft.Extensions.Logging.LogLevel.Warning);
+                    })
+                    .ConfigureServices((context, services) =>
+                    {
+                        // Регистрация ваших сервисов
+                        services.AddTransient<ILogProcessor, LogProcessor>();
+                        services.AddTransient<ILogParserFactory, LogParserFactory>();
+                    });
+
+                using var host = hostBuilder.Build();
+
+                await host.StartAsync(cancellationToken);
+
+                var logProcessor = host.Services.GetRequiredService<ILogProcessor>();
+
+                await logProcessor.ProcessAsync(input.FullName, output.FullName, problems.FullName);
+
+                await host.StopAsync(cancellationToken);
+
+                return 0;
+            });
+
+            ParseResult parseResult = rootCommand.Parse(args);
+
+            return await parseResult.InvokeAsync(); 
         }
     }
 }

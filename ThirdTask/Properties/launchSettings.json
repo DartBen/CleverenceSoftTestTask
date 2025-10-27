@@ -1,0 +1,8 @@
+{
+  "profiles": {
+    "ThirdTask": {
+      "commandName": "Project",
+      "commandLineArgs": "-i input.log -o outputlog2.log"
+    }
+  }
+}
